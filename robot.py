@@ -73,12 +73,12 @@ class Robot(object):
             # update our direction and location
             self.heading = self.heading.adjust(steering, movement)
 
-            rotation_map = {
+            steering_rotation_map = {
                 Steering.Right    :  90,
                 Steering.Straight :   0,
                 Steering.Left     : -90
             }
-            rotation = rotation_map[steering]
+            rotation = steering_rotation_map[steering]
         else:
             rotation = 0
             movement = 0

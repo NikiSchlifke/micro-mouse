@@ -32,9 +32,8 @@ class Sensor:
         return max(self.sensors)==0
 
     def random(self):
-        if self.isDeadEnd():
-            return random.choice([Steering.Left, Steering.Right])
-        return random.choice([s for s in list(Steering) if self.distance(s) > 0])
+        return random.choice(list(Steering))
+
 """
 Encapsulate direction @ location
 """
@@ -69,15 +68,18 @@ class Controller(object):
     def exploit(self, heading, sensors):
         return (Steering.Straight, 0)
 
-    def random(self, sensor, movement):
-        steering = sensor.random()
-        if sensor.isDeadEnd():
-            movement = 0
-        return (steering, movement)
-
 class RandomController(Controller):
     def explore(self, heading, sensor):
         return self.random(sensor, 1)
 
     def exploit(self, heading, sensors):
-        return self.explore(heading, sensors)
+        return self.random(sensors, 1)
+
+    def random(self, sensor, movement):
+        if sensor.isDeadEnd():
+            steering = random.choice([Steering.Left, Steering.Right])
+            movement = 0
+        else:
+            steering = random.choice([s for s in list(Steering) if sensor.distance(s)>0])
+        return (steering, movement)
+
