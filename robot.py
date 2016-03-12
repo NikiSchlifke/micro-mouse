@@ -1,54 +1,4 @@
-import numpy as np
-import random
-import time
-
-class Grid(object):
-    def __init__(self, rows, cols ,init_val):
-        self.rows = rows
-        self.cols = cols
-        self.grid = [ [ init_val for c in range(rows) ] for r in range(cols) ]
-
-    def __getitem__(self, row):
-        return self.grid[row]
-
-    def log(self):
-        for row in self.grid:
-            print row 
-
-class Heuristic(Grid):
-    def __init__(self, rows, cols):
-        Grid.__init__(self, rows, cols, -1)
-
-        # set center values to zero
-        open = [ (0, rows/2+r-1, cols/2+c-1) for r in range(2) for c in range(2) ]
-
-        delta = [[-1,  0], # go north
-                 [ 0, -1], # go west
-                 [ 1,  0], # go south
-                 [ 0,  1]] # go east
-
-        # expand from the center
-        while len(open)>0:
-            for h,r,c in open:
-                self.grid[r][c] = h
-
-            next_open = []
-            for h,r,c in open:
-                for d in delta:
-                    r2 = r + d[0]
-                    c2 = c + d[1]
-                    if r2>=0 and r2<self.rows and c2>=0 and c2<self.cols:
-                        v2 = self.grid[r2][c2]
-                        if v2==-1:
-                            next_open.append((h+1,r2,c2))
-            open = next_open
-
-class Counter(Grid):
-    def __init__(self, rows, cols):
-        Grid.__init__(self, rows, cols, 0)
-
-    def increment(self, row, col):
-        self.grid[row][col] += 1
+from controller import *
 
 class Robot(object):
     def __init__(self, maze_dim):
@@ -58,22 +8,17 @@ class Robot(object):
         provided based on common information, including the size of the maze
         the robot is placed in.
         '''
-        self.location = [0, 0]
-        self.heading = 'up'
-        self.maze_dim = maze_dim
+        self.controller = RandomController()
+        self.init_heading = Heading(Direction.N, [maze_dim-1, 0])
+        self.is_training = True
+        self.reset()
 
-        # initial location
-        self.row = maze_dim-1
-        self.col = 0
-        self.direction = 0 # up
+    def reset(self):
+        self.heading = self.init_heading
+        self.time = 0
 
-        # hueristic
-        self.heuristic = Heuristic(maze_dim, maze_dim)
-        self.heuristic.log()
-
-        # count visits at each location
-        self.counter = Counter(maze_dim, maze_dim)
-        self.counter.log()
+    def tick(self):
+        self.time += 1
 
     def next_move(self, sensors):
         '''
@@ -97,52 +42,46 @@ class Robot(object):
         the tester to end the run and return the robot to the start.
         '''
 
-        print '(r,c)=',(self.row, self.col), 'direction', self.direction, 'sensors',sensors
+        heading = self.heading
+        rotation, movement = self.calculate_move(Sensor(sensors))
 
-        delta = [[-1,  0], # go north
-                 [ 0, -1], # go west
-                 [ 1,  0], # go south
-                 [ 0,  1]] # go east
+        print '{:03d} {} [{:>2d},{:>2d},{:>2d}] {:>3d},{:>2d} => {}'.format(
+            self.time, 
+            heading,
+            sensors[0], sensors[1], sensors[2],
+            rotation,
+            movement,
+            self.heading)
 
-        turn_map   = { 'left':1,   'straight':0, 'right':-1 }
-        sensor_map = { 'left':0,   'straight':1, 'right':2  }
-        angle_map  = { 'left':-90, 'straight':0, 'right':90 }
-
-        rotation = 0
-        movement = 0
-
-        # count the number of visits to the current location
-        self.counter.increment(self.row, self.col)
-
-        min_count = self.counter[self.row][self.col]
-        moves = []
-        for turn in ['left', 'right', 'straight']:
-            d = (self.direction + turn_map[turn])%len(delta)
-            r = self.row + delta[d][0]
-            c = self.col + delta[d][1]
-            if r>=0 and r<self.maze_dim and c>=0 and c<self.maze_dim:
-                depth = sensors[sensor_map[turn]]
-                print turn,delta[d],r,c, 'depth', depth
-                if depth==0:
-                    continue # hit wall
-                count = self.counter[r][c]
-                if count <= min_count:
-                    min_count = count
-                    h = self.heuristic[r][c]
-                    moves.append((count, h, depth, d, r, c, turn))
-        moves.sort()
-        if len(moves)>0:
-            moves.sort()
-            count, h, depth, self.direction, self.row, self.col, turn = moves[0]
-            movement = 1
-            rotation = angle_map[turn]
-        else:
-            rotation = angle_map['left']
-            self.direction = (self.direction + turn_map['left'])%len(delta)
-
-        print 'rotation', rotation, 'movement', movement
-        self.counter.log()        
-
-        time.sleep(1)
+        self.tick()
 
         return rotation, movement
+
+    def calculate_move(self, sensor):
+        try:
+            if self.is_training:
+                steering, movement = self.controller.explore(self.heading, sensor)
+            else:
+                steering, movement = self.controller.exploit(self.heading, sensor)
+        except ResetException:
+            self.is_training = False
+            self.reset()
+            return ('Reset', 'Reset')
+
+        # check the steering and movement against sensor values
+        if sensor.distance(steering)>=movement:
+            # update our direction and location
+            self.heading = self.heading.adjust(steering, movement)
+
+            rotation_map = {
+                Steering.Right    :  90,
+                Steering.Straight :   0,
+                Steering.Left     : -90
+            }
+            rotation = rotation_map[steering]
+        else:
+            rotation = 0
+            movement = 0
+
+        return rotation, movement
+
