@@ -1,3 +1,4 @@
+import os
 from controller import *
 
 class Robot(object):
@@ -8,10 +9,19 @@ class Robot(object):
         provided based on common information, including the size of the maze
         the robot is placed in.
         '''
-        self.controller = RandomController()
+        self.controller = self.createController()
         self.init_heading = Heading(Direction.N, [maze_dim-1, 0])
         self.is_training = True
         self.reset()
+
+    def createController(self):
+        try:
+            controller_name = os.environ['CONTROLLER']
+        except:
+            controller_name = ''
+        if controller_name=='random':
+            return RandomController()
+        return Controller() # this does nothing
 
     def reset(self):
         self.heading = self.init_heading
