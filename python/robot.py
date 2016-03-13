@@ -1,4 +1,5 @@
 import os
+import time
 from controller import *
 
 class Robot(object):
@@ -9,26 +10,36 @@ class Robot(object):
         provided based on common information, including the size of the maze
         the robot is placed in.
         '''
-        self.controller = self.createController()
-        self.init_heading = Heading(Direction.N, [maze_dim-1, 0])
-        self.is_training = True
-        self.reset()
-
-    def createController(self):
         try:
-            controller_name = os.environ['CONTROLLER']
+            controller_name = os.environ['CONTROL']
         except:
             controller_name = ''
         if controller_name=='random':
-            return RandomController()
-        return Controller() # this does nothing
+            self.controller = Controller_Random()
+        elif controller_name=='deadend':
+            self.controller = Controller_DeadEnd()
+        else:
+            self.controller = Controller() # this does nothing
+        self.controller.init(maze_dim)
+
+        try:
+            self.tick_delay = float(os.environ['DELAY'])
+        except:
+            self.tick_interval = 0
+
+        self.init_heading = Heading(Direction.N, [maze_dim-1, 0])
+        self.is_training = True
+        self.time = 0
+        self.reset()
 
     def reset(self):
         self.heading = self.init_heading
-        self.time = 0
+        self.controller.reset(self.heading)
 
     def tick(self):
         self.time += 1
+        if self.tick_delay>0:
+            time.sleep(self.tick_delay)
 
     def next_move(self, sensors):
         '''
@@ -53,10 +64,36 @@ class Robot(object):
         '''
 
         heading = self.heading
-        rotation, movement = self.calculate_move(Sensor(sensors))
+        sensor = Sensor(sensors)
 
-        print '{:03d} {} [{:>2d},{:>2d},{:>2d}] {:>3d},{:>2d} => {}'.format(
+        try:
+            if self.is_training:
+                steering, movement = self.controller.explore(heading, sensor)
+            else:
+                steering, movement = self.controller.exploit(heading, sensor)
+        except ResetException:
+            self.is_training = False
+            self.reset()
+            return ('Reset', 'Reset')
+
+        # check the steering and movement against sensor values
+        if sensor.distance(steering)>=movement:
+            # update our direction and location
+            self.heading = heading.adjust(steering, movement)
+            # map steering to rotation
+            steering_rotation_map = {
+                Steering.R :  90,
+                Steering.F :   0,
+                Steering.L : -90
+            }
+            rotation = steering_rotation_map[steering]
+        else:
+            rotation = 0
+            movement = 0
+
+        print '{:03d} {} {} [{:>2d},{:>2d},{:>2d}] {:>3d},{:>2d} => {}'.format(
             self.time, 
+            self.controller,
             heading,
             sensors[0], sensors[1], sensors[2],
             rotation,
@@ -66,32 +103,3 @@ class Robot(object):
         self.tick()
 
         return rotation, movement
-
-    def calculate_move(self, sensor):
-        try:
-            if self.is_training:
-                steering, movement = self.controller.explore(self.heading, sensor)
-            else:
-                steering, movement = self.controller.exploit(self.heading, sensor)
-        except ResetException:
-            self.is_training = False
-            self.reset()
-            return ('Reset', 'Reset')
-
-        # check the steering and movement against sensor values
-        if sensor.distance(steering)>=movement:
-            # update our direction and location
-            self.heading = self.heading.adjust(steering, movement)
-
-            steering_rotation_map = {
-                Steering.Right    :  90,
-                Steering.Straight :   0,
-                Steering.Left     : -90
-            }
-            rotation = steering_rotation_map[steering]
-        else:
-            rotation = 0
-            movement = 0
-
-        return rotation, movement
-
