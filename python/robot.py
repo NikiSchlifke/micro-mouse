@@ -18,16 +18,21 @@ class Robot(object):
             self.controller = Controller_Random()
         elif controller_name=='deadend':
             self.controller = Controller_DeadEnd()
+        elif controller_name=='counter':
+            self.controller = Controller_Counter()
+        elif controller_name=='heuristic':
+            self.controller = Controller_Heuristic()
         else:
             self.controller = Controller() # this does nothing
-        self.controller.init(maze_dim)
+        rows, cols = maze_dim, maze_dim
+        self.controller.init(rows, cols)
 
         try:
             self.tick_delay = float(os.environ['DELAY'])
         except:
             self.tick_interval = 0
 
-        self.init_heading = Heading(Direction.N, [maze_dim-1, 0])
+        self.init_heading = Heading(Direction.N, [rows-1, 0])
         self.is_training = True
         self.time = 0
         self.reset()

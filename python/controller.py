@@ -84,14 +84,16 @@ class Sensor:
 Check goal location
 """
 class Goal(object):
-    def __init__(self, maze_dim):
-        self.goal_max = maze_dim/2
-        self.goal_min = self.goal_max - 1
+    def __init__(self, rows, cols):
+        self.goal_row_max = rows/2
+        self.goal_row_min = rows/2-1
+        self.goal_col_max = cols/2
+        self.goal_col_min = cols/2-1
 
     def isGoal(self, location):
         row, col = location
-        return self.goal_min <= row and row <= self.goal_max and \
-               self.goal_min <= col and col <= self.goal_max
+        return self.goal_row_min <= row and row <= self.goal_row_max and \
+               self.goal_col_min <= col and col <= self.goal_col_max
 
 """
 Raise this exception when exploration is over
@@ -103,8 +105,8 @@ class ResetException(Exception):
 Controller (base)
 """
 class Controller(object):
-    def init(self, maze_dim):
-        self.goal = Goal(maze_dim)
+    def init(self, rows, cols):
+        self.goal = Goal(rows, cols)
 
     def isGoal(self, location):
         return self.goal.isGoal(location)
@@ -135,12 +137,12 @@ class Controller_Random(Controller):
     def explore(self, heading, sensor):
         if self.isGoal(heading.location):
             raise ResetException
-        return self.random(heading, sensor, 1)
+        return self.handle(heading, sensor, 1)
 
     def exploit(self, heading, sensor):
-        return self.random(heading, sensor, 1)
+        return self.handle(heading, sensor, 1)
 
-    def random(self, heading, sensor, movement):
+    def handle(self, heading, sensor, movement):
         if sensor.isDeadEnd():
             # randomly turn at dead end
             steering = random.choice([Steering.L, Steering.R])
@@ -179,9 +181,9 @@ class Grid(object):
 Keeps track of dead ends
 """
 class DeadEnds(object):
-    def __init__(self, maze_dim):
+    def __init__(self, rows, cols):
         # keep track of dead ends for each direction
-        self.deadEndsMap = { d:Grid(maze_dim, maze_dim, '_') for d in Direction }
+        self.deadEndsMap = { d:Grid(rows, cols, '_') for d in Direction }
 
     def reset(self, heading):
         # initial location is dead end
@@ -214,16 +216,16 @@ class DeadEnds(object):
 Controller that detects dead ends
 """
 class Controller_DeadEnd(Controller_Random):
-    def init(self, maze_dim):
-        Controller_Random.init(self, maze_dim)
-        self.deadEnds = DeadEnds(maze_dim)
+    def init(self, rows, cols):
+        Controller_Random.init(self, rows, cols)
+        self.deadEnds = DeadEnds(rows, cols)
 
     def reset(self, heading):
         self.deadEnds.reset(heading)
 
-    def random(self, heading, sensor, movement):
+    def handle(self, heading, sensor, movement):
         self.deadEnds.update(heading, sensor)
-        print heading, self.deadEnds
+        print self.deadEnds
         if self.deadEnds.isDeadEnd(heading):
             # back off at dead end
             steering = Steering.F
@@ -231,4 +233,90 @@ class Controller_DeadEnd(Controller_Random):
         else:
             # randomly choose available steering direction
             steering = random.choice([s for s in Steering if sensor.distance(s)>0])
+        return (steering, movement)
+
+"""
+Keep track of how often each cell is visited
+"""
+class Counter(Grid):
+    def __init__(self, rows, cols):
+        Grid.__init__(self, rows, cols, 0)
+
+    def increment(self, location):
+        row, col = location
+        self.grid[row][col] += 1
+
+"""
+Controller that keep tracks how often each cell is visited
+"""
+class Controller_Counter(Controller_DeadEnd):
+    def init(self, rows, cols):
+        Controller_DeadEnd.init(self, rows, cols)
+        self.counter = Counter(rows, cols)
+
+    def handle(self, heading, sensor, movement):
+        self.counter.increment(heading.location)
+        print self.counter
+        self.deadEnds.update(heading, sensor)
+        if self.deadEnds.isDeadEnd(heading):
+            # back off at dead end
+            steering = Steering.F
+            movement = -1
+        else:
+            counts = []
+            for s in Steering:
+                if sensor.distance(s)>0:
+                    location = heading.adjust(s,1).location
+                    c = self.counter.getValue(location)
+                    counts.append((c, s.value))
+            counts.sort()
+            steering = Steering(counts[0][1])
+        return (steering, movement)
+
+class Heuristic(Grid):
+    def __init__(self, rows, cols):
+        Grid.__init__(self, rows, cols, -1)
+
+        # set center values to zero
+        open = [ (0, rows/2+r-1, cols/2+c-1) for r in range(2) for c in range(2) ]
+
+        # expand from the center
+        while len(open)>0:
+            for h,r,c in open:
+                self.grid[r][c] = h
+
+            next_open = []
+            for h,r,c in open:
+                for d in Delta:
+                    r2 = r + d[0]
+                    c2 = c + d[1]
+                    if r2>=0 and r2<rows and c2>=0 and c2<cols:
+                        v2 = self.grid[r2][c2]
+                        if v2==-1:
+                            next_open.append((h+1,r2,c2))
+            open = next_open
+
+class Controller_Heuristic(Controller_Counter):
+    def init(self, rows, cols):
+        Controller_Counter.init(self, rows, cols)
+        self.heuristic = Heuristic(rows, cols)
+
+    def handle(self, heading, sensor, movement):
+        self.counter.increment(heading.location)
+        self.deadEnds.update(heading, sensor)
+        print self.heuristic
+        if self.deadEnds.isDeadEnd(heading):
+            # back off at dead end
+            steering = Steering.F
+            movement = -1
+        else:
+            counts = []
+            for s in Steering:
+                if sensor.distance(s)>0:
+                    location = heading.adjust(s,1).location
+                    c = self.counter.getValue(location)
+                    h = self.heuristic.getValue(location)
+                    counts.append((c, h, s.value))
+            counts.sort()
+            steering = Steering(counts[0][2])
         return (steering, movement)
