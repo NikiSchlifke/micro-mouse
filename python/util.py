@@ -140,7 +140,6 @@ class Mapper(Grid):
             i = heading.direction.value
             if i & self.getValue(back)>0:
                 value += 2**heading.direction.reverse().value
-        print value, heading.location
         self.setValue(heading.location, value)
 
 """

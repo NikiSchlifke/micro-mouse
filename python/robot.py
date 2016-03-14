@@ -10,35 +10,42 @@ class Robot(object):
         provided based on common information, including the size of the maze
         the robot is placed in.
         '''
-        rows, cols = maze_dim, maze_dim
         try:
             controller_name = os.environ['CONTROL']
         except:
             controller_name = ''
         if controller_name=='random':
-            self.controller = Controller_Random(rows, cols)
+            self.controller = Controller_Random()
         elif controller_name=='deadend':
-            self.controller = Controller_DeadEnd(rows, cols)
+            self.controller = Controller_DeadEnd()
         elif controller_name=='counter':
-            self.controller = Controller_Counter(rows, cols)
+            self.controller = Controller_Counter()
         elif controller_name=='heuristic':
-            self.controller = Controller_Heuristic(rows, cols)
+            self.controller = Controller_Heuristic()
         else:
-            self.controller = Controller(rows, cols) # this does nothing
+            self.controller = Controller() # this does nothing
 
         try:
             self.tick_delay = float(os.environ['DELAY'])
         except:
             self.tick_interval = 0
 
+        rows, cols = maze_dim, maze_dim
+
         self.init_heading = Heading(Direction.N, [rows-1, 0])
         self.is_training = True
         self.time = 0
+
+        self.goal = Goal(rows, cols)
+        self.mapper = Mapper(rows, cols)
+        self.counter = Counter(rows, cols)
+        self.deadEnds = DeadEnds(rows, cols)
+        self.deadEnds.setDeadEnd(self.init_heading.reverse())
+        self.heuristic = Heuristic(rows, cols)
         self.reset()
 
     def reset(self):
         self.heading = self.init_heading
-        self.controller.reset(self.heading)
 
     def tick(self):
         self.time += 1
@@ -68,20 +75,26 @@ class Robot(object):
         '''
 
         heading = self.heading
-        sensor = Sensor(sensors)
+        self.sensor = Sensor(sensors)
+        self.mapper.expand(heading, self.sensor)
+        self.counter.increment(heading.location)
+        self.deadEnds.update(heading, self.sensor)
 
         try:
             if self.is_training:
-                steering, movement = self.controller.explore(heading, sensor)
+                if self.goal.isGoal(self.heading.location):
+                    if self.controller.resetAtGoal:
+                        raise ResetException
+                steering, movement = self.controller.explore(self)
             else:
-                steering, movement = self.controller.exploit(heading, sensor)
+                steering, movement = self.controller.exploit(self)
         except ResetException:
             self.is_training = False
             self.reset()
             return ('Reset', 'Reset')
 
         # check the steering and movement against sensor values
-        if sensor.distance(steering)>=movement:
+        if self.sensor.distance(steering)>=movement:
             # update our direction and location
             self.heading = heading.adjust(steering, movement)
             # map steering to rotation
