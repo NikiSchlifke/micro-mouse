@@ -10,22 +10,21 @@ class Robot(object):
         provided based on common information, including the size of the maze
         the robot is placed in.
         '''
+        rows, cols = maze_dim, maze_dim
         try:
             controller_name = os.environ['CONTROL']
         except:
             controller_name = ''
         if controller_name=='random':
-            self.controller = Controller_Random()
+            self.controller = Controller_Random(rows, cols)
         elif controller_name=='deadend':
-            self.controller = Controller_DeadEnd()
+            self.controller = Controller_DeadEnd(rows, cols)
         elif controller_name=='counter':
-            self.controller = Controller_Counter()
+            self.controller = Controller_Counter(rows, cols)
         elif controller_name=='heuristic':
-            self.controller = Controller_Heuristic()
+            self.controller = Controller_Heuristic(rows, cols)
         else:
-            self.controller = Controller() # this does nothing
-        rows, cols = maze_dim, maze_dim
-        self.controller.init(rows, cols)
+            self.controller = Controller(rows, cols) # this does nothing
 
         try:
             self.tick_delay = float(os.environ['DELAY'])
