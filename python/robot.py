@@ -28,7 +28,7 @@ class Robot(object):
         try:
             self.tick_delay = float(os.environ['DELAY'])
         except:
-            self.tick_interval = 0
+            self.tick_delay = 0
 
         rows, cols = maze_dim, maze_dim
 
