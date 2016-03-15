@@ -9,6 +9,9 @@ Delta = [[-1,  0], # go north
 class Steering(Enum):    
     L, F, R = (-1,0,1) # Left, Forward, Right
 
+    def __str__(self):
+        return self.name
+
 class Direction(Enum):
     N, E, S, W = range(4) # North, East, South, West
 
@@ -20,6 +23,10 @@ class Direction(Enum):
 
     def delta(self):
         return Delta[self.value]
+
+    def __str__(self):
+        return self.name
+
 
 """
 Encapsulate direction @ location
@@ -141,6 +148,13 @@ class Mapper(Grid):
             if i & self.getValue(back)>0:
                 value += 2**heading.direction.reverse().value
         self.setValue(heading.location, value)
+
+    def canMove(self, location, direction):
+        if not self.isValid(location):
+            return False
+        value = self.getValue(location)
+        i = direction.value
+        return value & 2**i
 
 """
 Keep track of how often each cell is visited
