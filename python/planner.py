@@ -105,4 +105,4 @@ if __name__ == '__main__':
     rows, cols = maze.shape
     goal = Goal(rows, cols)
     heuristic = Heuristic(maze)
-    findOptimalPath(maze, goal, heuristic)
+    findOptimalMoves(maze, goal, heuristic)
