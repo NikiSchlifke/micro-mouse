@@ -18,11 +18,11 @@ class Robot(object):
         self.time = 0
 
         self.goal = Goal(rows, cols)
-        self.mapper = Mapper(rows, cols)
+        self.maze = Mapper(rows, cols)
         self.counter = Counter(rows, cols)
         self.deadEnds = DeadEnds(rows, cols)
         self.deadEnds.setDeadEnd(self.init_heading.reverse())
-        self.heuristic = Heuristic(rows, cols)
+        self.heuristic = Heuristic(self.maze)
         self.reset()
 
         try:
@@ -36,8 +36,6 @@ class Robot(object):
         elif controller_name=='counter':
             self.controller = Controller_Counter()
         elif controller_name=='heuristic':
-            print 'heuristic'
-            print self.heuristic
             self.controller = Controller_Heuristic()
         else:
             self.controller = Controller() # this does nothing
@@ -79,13 +77,14 @@ class Robot(object):
 
         heading = self.heading
         self.sensor = Sensor(sensors)
-        self.mapper.expand(heading, self.sensor)
+        self.maze.expand(heading, self.sensor)
+        self.heuristic = Heuristic(self.maze)
         self.counter.increment(heading.location)
         self.deadEnds.update(heading, self.sensor)
 
         if self.controller.canReset(self):
             self.reset()
-            self.path = findOptimalPath(self.mapper)
+            self.path = findOptimalPath(self.maze, self.goal, self.heuristic)
             self.controller = Controller_Path()
             return ('Reset', 'Reset')
 

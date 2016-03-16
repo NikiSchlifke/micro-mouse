@@ -175,11 +175,14 @@ class Mapper(Grid):
         self.setValue(heading.location, value)
 
     def canMove(self, location, direction):
-        if not self.isValid(location):
+        if not self.isValid(location) or self.isUnknown(location):
             return False
         value = self.getValue(location)
         i = direction.value
-        return value & 2**i
+        return value & 2**i > 0
+
+    def isUnknown(self, location):
+        return self.getValue(location)==-1
 
 """
 Keep track of how often each cell is visited
@@ -231,25 +234,29 @@ class DeadEnds(object):
 Heuristic
 """
 class Heuristic(Grid):
-    def __init__(self, rows, cols):
+    def __init__(self, maze):
+        rows, cols = maze.shape
         Grid.__init__(self, rows, cols, -1)
 
         # set center values to zero
-        open = [ (0, rows/2+r-1, cols/2+c-1) for r in range(2) for c in range(2) ]
+        open = []
+        for r in range(2):
+            for c in range(2):
+                l = (rows/2+r-1, cols/2+c-1)
+                open.append((0,l))
+                self.setValue(l, 0)
 
         # expand from the center
         while len(open)>0:
-            for h,r,c in open:
-                self.grid[r][c] = h
+            h,l = open.pop(0)
+            self.setValue(l, h)
 
-            next_open = []
-            for h,r,c in open:
-                for d in Delta:
-                    r2 = r + d[0]
-                    c2 = c + d[1]
-                    if r2>=0 and r2<rows and c2>=0 and c2<cols:
-                        v2 = self.grid[r2][c2]
-                        if v2==-1:
-                            next_open.append((h+1,r2,c2))
-            open = next_open
-
+            isUnknown = maze.isUnknown(l)
+            for d2 in Direction:
+                delta = d2.delta() 
+                l2 = (l[0]+delta[0], l[1]+delta[1])
+                # we can move or unknown teritory
+                if maze.canMove(l, d2) or (isUnknown and self.isValid(l2)):
+                    v2 = self.getValue(l2)
+                    if v2==-1:
+                        open.append((h+1,l2))

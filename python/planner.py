@@ -4,13 +4,10 @@ import sys
 """
 A* search
 """
-def findOptimalPath(maze):
+def findOptimalPath(maze, goal, heuristic):
     rows, cols = maze.shape
     closed = Grid(rows, cols, 0)
     action = Grid(rows, cols, -1)
-    path = Grid(rows, cols, ' ')
-    heuristic = Heuristic(rows, cols)
-    goal = Goal(rows, cols)
 
     start = (rows-1, 0) 
     closed.setValue(start, 1)
@@ -53,6 +50,9 @@ def findOptimalPath(maze):
                     open.append((f2,h2,g2,l2,d2))
         open.sort()
 
+    path = Grid(rows, cols, ' ')
+    steering = Grid(rows, cols, ' ')
+
     if goal_reached:
         path.setValue(l, '*')
         while l != start:
@@ -64,7 +64,6 @@ def findOptimalPath(maze):
             path.setValue(l, d)
         # convert direction to steering
         count = 0
-        steering = Grid(rows, cols, ' ')
         l = start
         d = Direction.N
         while not goal.isGoal(l):
@@ -75,21 +74,26 @@ def findOptimalPath(maze):
             l = (l[0] + delta[0], l[1] + delta[1])
             count += 1
 
-    print 'maze'
+    print '-- Maze --'
     print maze
-    print 'closed'
+    print '-- Heuristic --'
+    print heuristic
+    print '-- Closed --'
     print closed
-    print 'action'
+    print '-- Action --'
     print action
-    print 'path'
+    print '-- Path --'
     print path
-    print 'steering'
+    print '-- Steering --'
     print steering
-    print 'path length={}'.format(count)
+    print 'Path Length: {}'.format(count)
 
     return steering
 
 if __name__ == '__main__':
     filename = sys.argv[1]
     maze = Mapper.openMazeFile(filename)
-    findOptimalPath(maze)
+    rows, cols = maze.shape
+    goal = Goal(rows, cols)
+    heuristic = Heuristic(maze)
+    findOptimalPath(maze, goal, heuristic)
