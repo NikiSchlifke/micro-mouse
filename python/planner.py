@@ -4,7 +4,7 @@ import sys
 """
 A* search
 """
-def findOptimalPath(maze, goal, heuristic):
+def findOptimalMoves(maze, goal, heuristic):
     rows, cols = maze.shape
     closed = Grid(rows, cols, 0)
     action = Grid(rows, cols, -1)
@@ -51,9 +51,10 @@ def findOptimalPath(maze, goal, heuristic):
         open.sort()
 
     path = Grid(rows, cols, ' ')
-    steering = Grid(rows, cols, ' ')
+    moves = []
 
     if goal_reached:
+        path_count = 0
         path.setValue(l, '*')
         while l != start:
             d = action.getValue(l)
@@ -62,17 +63,23 @@ def findOptimalPath(maze, goal, heuristic):
             delta = d.delta()
             l = (l[0] - delta[0], l[1] - delta[1])                 
             path.setValue(l, d)
+            path_count += 1
         # convert direction to steering
-        count = 0
-        l = start
-        d = Direction.N
-        while not goal.isGoal(l):
-            s = d.steer(path.getValue(l))
-            steering.setValue(l, s)
-            d = d.adjust(s)
-            delta = d.delta()
-            l = (l[0] + delta[0], l[1] + delta[1])
-            count += 1
+        move_count = 0
+        heading = Heading(Direction.N, start)
+        while not goal.isGoal(heading.location):
+            direction = path.getValue(heading.location)
+            steering = heading.direction.steer(direction)
+            movement = 1
+            while movement < 3:
+                next_heading = heading.adjust(steering, movement)
+                next_direction = path.getValue(next_heading.location)
+                if next_direction != direction:
+                    break
+                movement += 1
+            moves.append((steering, movement))
+            heading = heading.adjust(steering, movement)
+            move_count += 1
 
     print '-- Maze --'
     print maze
@@ -84,11 +91,13 @@ def findOptimalPath(maze, goal, heuristic):
     print action
     print '-- Path --'
     print path
-    print '-- Steering --'
-    print steering
-    print 'Path Length: {}'.format(count)
+    print 'Path Length: {}'.format(path_count)
+    print '-- Moves --'
+    for move in moves:
+        print move
+    print '# of Moves: {}'.format(move_count)
 
-    return steering
+    return moves
 
 if __name__ == '__main__':
     filename = sys.argv[1]

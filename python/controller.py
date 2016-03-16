@@ -1,5 +1,6 @@
 import random
 from util import *
+from planner import *
 
 """
 Controller (base)
@@ -111,19 +112,13 @@ Follow the optimal path
 """
 class Controller_Path(Controller):
     def __init__(self):
-        self.max_movement = 3
+        self.moves = []
 
     def canReset(self, robot):
         return False
 
     def search(self, robot):
-        heading = robot.heading
-        path = robot.path
-        steering = path.getValue(heading.location)
-        movement = 1
-        heading = heading.adjust(steering,1)
-        while path.getValue(heading.location)==Steering.F and movement<self.max_movement:
-            movement += 1
-            heading = heading.adjust(Steering.F, 1)
-        return (steering, movement)
+        if len(self.moves)==0:
+            self.moves = findOptimalMoves(robot.maze, robot.goal, robot.heuristic)
+        return self.moves.pop(0)
 

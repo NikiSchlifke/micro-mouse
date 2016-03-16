@@ -1,7 +1,6 @@
 import os
 import time
 from controller import *
-from planner import *
 
 class Robot(object):
     def __init__(self, maze_dim):
@@ -84,7 +83,6 @@ class Robot(object):
 
         if self.controller.canReset(self):
             self.reset()
-            self.path = findOptimalPath(self.maze, self.goal, self.heuristic)
             self.controller = Controller_Path()
             return ('Reset', 'Reset')
 
