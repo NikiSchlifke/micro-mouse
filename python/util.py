@@ -24,6 +24,14 @@ class Direction(Enum):
     def delta(self):
         return Delta[self.value]
 
+    def steer(self, direction):
+        diff = direction.value - self.value
+        if diff ==3:
+            diff = -1
+        if diff ==-3:
+            diff = 1
+        return Steering(diff)
+
     def __str__(self):
         return self.name
 
@@ -110,6 +118,7 @@ class Grid(object):
         self.rows = rows
         self.cols = cols
         self.grid = [ [ copy.deepcopy(init_val) for c in range(cols) ] for r in range(rows) ]
+        self.shape = (rows, cols)
 
     def __getitem__(self, row):
         return self.grid[row]
@@ -133,6 +142,22 @@ Maps the maze
 class Mapper(Grid):
     def __init__(self, rows, cols):
         Grid.__init__(self, rows, cols, (-1)) 
+
+    @staticmethod
+    def openMazeFile(filename):
+        with open(filename, 'rb') as f:
+            # First line should be an integer with the maze dimensions
+            maze_dim = int(f.next())
+            rows, cols = maze_dim, maze_dim
+            maze = Mapper(rows, cols)
+
+            # Subsequent lines describe the permissability of walls
+            for c in range(cols):
+                cells = f.next().split(',')
+                for i in range(len(cells)):
+                    r = rows-(i+1)
+                    maze.setValue((r,c), int(cells[i].strip()))
+        return maze
 
     def expand(self, heading, sensor):
         if self.getValue(heading.location) >= 0:

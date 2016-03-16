@@ -2,25 +2,16 @@ import random
 from util import *
 
 """
-Raise this exception when exploration is over
-"""
-class ResetException(Exception):
-    pass
-
-"""
 Controller (base)
 """
 class Controller(object):
-    def __init__(self):
-        self.resetAtGoal = True
+    # returns True when it wants to finish the exploration
+    def canReset(self, robot):
+        return robot.goal.isGoal(robot.heading.location)
 
-    # this is called every step in the first run
-    def explore(self, robot):
+    # this is called every step
+    def search(self, robot):
         return (Steering.F, 1)
-
-    # this is called every step in the second run
-    def exploit(self, robot):
-        return self.explore(robot)
 
     # for priting the class name
     def __str__(self):
@@ -33,7 +24,7 @@ Controller Random
 - at dead-end, it turns left or right 
 """
 class Controller_Random(Controller):
-    def explore(self, robot):
+    def search(self, robot):
         sensor = robot.sensor
         if sensor.isDeadEnd():
             # randomly turn at dead end
@@ -49,7 +40,7 @@ class Controller_Random(Controller):
 Controller that detects dead ends
 """
 class Controller_DeadEnd(Controller):
-    def explore(self, robot):
+    def search(self, robot):
         heading = robot.heading
         sensor = robot.sensor
         deadEnds = robot.deadEnds
@@ -67,7 +58,7 @@ class Controller_DeadEnd(Controller):
 Controller that keep tracks how often each cell is visited
 """
 class Controller_Counter(Controller):
-    def explore(self, robot):
+    def search(self, robot):
         heading = robot.heading
         sensor = robot.sensor
         counter = robot.counter
@@ -92,7 +83,7 @@ class Controller_Counter(Controller):
 Controller that uses Heuristic value to choose a path
 """
 class Controller_Heuristic(Controller):
-    def explore(self, robot):
+    def search(self, robot):
         heading = robot.heading
         sensor = robot.sensor
         counter = robot.counter
@@ -114,3 +105,25 @@ class Controller_Heuristic(Controller):
             steering = Steering(counts[0][2])
             movement = 1
         return (steering, movement)
+
+"""
+Follow the optimal path
+"""
+class Controller_Path(Controller):
+    def __init__(self):
+        self.max_movement = 3
+
+    def canReset(self, robot):
+        return False
+
+    def search(self, robot):
+        heading = robot.heading
+        path = robot.path
+        steering = path.getValue(heading.location)
+        movement = 1
+        heading = heading.adjust(steering,1)
+        while path.getValue(heading.location)==Steering.F and movement<self.max_movement:
+            movement += 1
+            heading = heading.adjust(Steering.F, 1)
+        return (steering, movement)
+
