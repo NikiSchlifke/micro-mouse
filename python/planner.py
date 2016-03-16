@@ -7,7 +7,7 @@ A* search
 def findOptimalMoves(maze, goal, heuristic):
     rows, cols = maze.shape
     closed = Grid(rows, cols, 0)
-    action = Grid(rows, cols, -1)
+    action = Grid(rows, cols, '_')
 
     start = (rows-1, 0) 
     closed.setValue(start, 1)
@@ -58,7 +58,7 @@ def findOptimalMoves(maze, goal, heuristic):
         path.setValue(l, '*')
         while l != start:
             d = action.getValue(l)
-            if d == -1:
+            if d == '_':
                 break
             delta = d.delta()
             l = (l[0] - delta[0], l[1] - delta[1])                 
@@ -93,8 +93,8 @@ def findOptimalMoves(maze, goal, heuristic):
     print path
     print 'Path Length: {}'.format(path_count)
     print '-- Moves --'
-    for move in moves:
-        print move
+    for steering, movement in moves:
+        print '({},{})'.format(steering, movement)
     print '# of Moves: {}'.format(move_count)
 
     return moves
