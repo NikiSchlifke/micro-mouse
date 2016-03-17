@@ -12,17 +12,15 @@ class Robot(object):
         '''
         rows, cols = maze_dim, maze_dim
 
-        self.init_heading = Heading(Direction.N, [rows-1, 0])
-        self.is_training = True
-        self.time = 0
+        self.start = (rows-1, 0)
+        self.reset()
 
         self.goal = Goal(rows, cols)
         self.maze = Mapper(rows, cols)
         self.counter = Counter(rows, cols)
         self.deadEnds = DeadEnds(rows, cols)
-        self.deadEnds.setDeadEnd(self.init_heading.reverse())
+        self.deadEnds.setDeadEnd(self.heading.reverse())
         self.heuristic = Heuristic(self.maze)
-        self.reset()
 
         try:
             controller_name = os.environ['CONTROL']
@@ -39,18 +37,21 @@ class Robot(object):
         else:
             self.controller = Controller() # this does nothing
 
+        self.time = 0
         try:
             self.tick_delay = float(os.environ['DELAY'])
         except:
             self.tick_delay = 0
 
     def reset(self):
-        self.heading = self.init_heading
+        self.heading = Heading(Direction.N, self.start)
+        self.prev_heading = None
 
     def tick(self):
         self.time += 1
         if self.tick_delay>0:
             time.sleep(self.tick_delay)
+        return self.time
 
     def next_move(self, sensors):
         '''
@@ -77,11 +78,11 @@ class Robot(object):
         heading = self.heading
         self.sensor = Sensor(sensors)
         self.maze.expand(heading, self.sensor)
-        self.heuristic = Heuristic(self.maze)
-        self.counter.increment(heading.location)
         self.deadEnds.update(heading, self.sensor)
+        self.counter.increment(heading.location)
 
         if self.controller.canReset(self):
+            self.report()
             self.reset()
             self.controller = Controller_Path()
             return ('Reset', 'Reset')
@@ -91,6 +92,7 @@ class Robot(object):
         # check the steering and movement against sensor values
         if self.sensor.distance(steering)>=movement:
             # update our direction and location
+            self.prev_heading = heading
             self.heading = heading.adjust(steering, movement)
             # map steering to rotation
             steering_rotation_map = {
@@ -103,15 +105,28 @@ class Robot(object):
             rotation = 0
             movement = 0
 
-        print '{:03d} {} {} [{:>2d},{:>2d},{:>2d}] {:>3d},{:>2d} => {}'.format(
+        print '{:03d} {} {} [{:>2d},{:>2d},{:>2d}] {:>3d},{:>2d} => {} {}'.format(
             self.time, 
             self.controller,
             heading,
             sensors[0], sensors[1], sensors[2],
             rotation,
             movement,
-            self.heading)
+            self.heading,
+            'GOAL!' if self.goal.isGoal(self.heading.location) else '')
 
-        self.tick()
+        if self.tick() == 1000:
+            self.report()
 
         return rotation, movement
+
+    def report(self):
+        print 'Maze'
+        print self.maze
+        print 'Counter'
+        print self.counter
+        print 'Dead ends'
+        print self.deadEnds
+        print 'Heuristic'
+        print self.heuristic
+

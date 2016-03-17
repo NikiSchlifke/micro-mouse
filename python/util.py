@@ -35,7 +35,6 @@ class Direction(Enum):
     def __str__(self):
         return self.name
 
-
 """
 Encapsulate direction @ location
 """
@@ -92,6 +91,10 @@ class Sensor:
     def isDeadEnd(self):
         return max(self.sensors)==0
 
+    # both sides are walls
+    def isOneWay(self):
+        return self.sensors[0]==0 and self.sensors[1]>0 and self.sensors[2]==0
+
     def __str__(self):
         return str(self.sensors)
 
@@ -141,7 +144,7 @@ Maps the maze
 """
 class Mapper(Grid):
     def __init__(self, rows, cols):
-        Grid.__init__(self, rows, cols, (-1)) 
+        Grid.__init__(self, rows, cols, -1) 
 
     @staticmethod
     def openMazeFile(filename):
@@ -169,8 +172,7 @@ class Mapper(Grid):
                 value += 2**i
         back = heading.backward().location
         if self.isValid(back):
-            i = heading.direction.value
-            if i & self.getValue(back)>0:
+            if self.canMove(back, heading.direction):
                 value += 2**heading.direction.reverse().value
         self.setValue(heading.location, value)
 
@@ -184,6 +186,8 @@ class Mapper(Grid):
     def isUnknown(self, location):
         return self.getValue(location)==-1
 
+    def __str__(self):
+        return '\n'.join(','.join('{:2d}'.format(val) for val in row) for row in self.grid)
 """
 Keep track of how often each cell is visited
 """
@@ -195,6 +199,8 @@ class Counter(Grid):
         row, col = location
         self.grid[row][col] += 1
 
+    def __str__(self):
+        return '\n'.join(','.join('{:2d}'.format(val) for val in row) for row in self.grid)
 """
 Keeps track of dead ends
 """
@@ -247,6 +253,9 @@ class Heuristic(Grid):
                 self.setValue(l, 0)
 
         # expand from the center
+        self.expand(maze, open)
+
+    def expand(self, maze, open):
         while len(open)>0:
             h,l = open.pop(0)
             self.setValue(l, h)
@@ -260,3 +269,6 @@ class Heuristic(Grid):
                     v2 = self.getValue(l2)
                     if v2==-1:
                         open.append((h+1,l2))
+
+    def __str__(self):
+        return '\n'.join(','.join('{:2d}'.format(val) for val in row) for row in self.grid)
