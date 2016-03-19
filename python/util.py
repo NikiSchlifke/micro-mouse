@@ -95,6 +95,12 @@ class Sensor:
     def isForwardOnly(self):
         return self.forward()>0 and self.left()==0 and self.right()==0
 
+    def isLeftOnly(self):
+        return self.forward()==0 and self.left()>0 and self.right()==0
+
+    def isRightOnly(self):
+        return self.forward()==0 and self.left()==0 and self.right()>0
+
     def left(self):
         return self.sensors[0]
 
@@ -178,47 +184,31 @@ class Mapper(Grid):
         return maze
 
     def expand(self, heading, sensor):
-        if self.getValue(heading.location) >= 0:
-            return
         value = 0
         for s in Steering:
-            i = heading.direction.adjust(s).value
             if sensor.distance(s)>0:
+                i = heading.direction.adjust(s).value
                 value += 2**i
-        back = heading.backward().location
-        if self.isValid(back):
-            if self.canMove(back, heading.direction):
-                value += 2**heading.direction.reverse().value
+        backward = heading.backward()
+        if self.canMove(backward.reverse()): # can come back from back ?
+            value += 2**backward.direction.value
         self.setValue(heading.location, value)
 
-    def canMove(self, location, direction):
+    def canMove(self, heading):
+        location = heading.location
+        direction = heading.direction
         if not self.isValid(location) or self.isUnknown(location):
             return False
         value = self.getValue(location)
         i = direction.value
-        return value & 2**i > 0
+        return (value & 2**i) > 0
 
     def isOneWay(self, location):
-        directions = sum(1 for d in Direction if self.canMove(location, d))
+        directions = sum(1 for d in Direction if self.canMove(Heading(d, location)))
         return directions <= 2
 
     def isUnknown(self, location):
         return self.getValue(location)==-1
-
-"""
-Keep track of how often each cell is visited
-"""
-class Counter(Grid):
-    def __init__(self, rows, cols):
-        Grid.__init__(self, rows, cols, 0)
-
-    def increment(self, location):
-        row, col = location
-        self.grid[row][col] += 1
-
-    def coverage(self):
-        rows, cols = self.shape
-        return sum(1.0 for r in range(rows) for c in range(cols) if self.grid[r][c]>0)/self.area()
 
 """
 Keeps track of dead ends
@@ -232,18 +222,22 @@ class DeadEnds(object):
 
     def update(self, heading, sensor, maze):
         if sensor.isDeadEnd():
-            self.setDeadEnd(heading)
-        elif sensor.isForwardOnly(): 
-            if self.isDeadEnd(heading.forward()):
-                self.setDeadEnd(heading)
-            if self.isDeadEnd(heading.backward()):
-                self.setDeadEnd(heading.reverse())
-        elif sensor.forward()>0 and maze.isOneWay(heading.location):
-            if self.isDeadEnd(heading.forward()):
-                if sensor.right()==0:
-                    self.setDeadEnd(heading.right(0))
-                if sensor.left()==0:
-                    self.setDeadEnd(heading.left(0))
+	    self.setDeadEnd(heading)
+        if self.isDeadEnd(heading.forward()):
+	    if sensor.isForwardOnly():
+	        self.setDeadEnd(heading)
+            elif maze.isOneWay(heading.location):
+		if sensor.left()>0 and sensor.right()==0:
+		    self.setDeadEnd(heading.right(0))
+		elif sensor.left()==0 and sensor.right()>0:
+		    self.setDeadEnd(heading.left(0))
+        if self.isDeadEnd(heading.backward()):
+	    if sensor.isForwardOnly():
+		self.setDeadEnd(heading.reverse())
+	    elif sensor.isLeftOnly():
+		self.setDeadEnd(heading.right(0))
+	    elif sensor.isRightOnly():
+		self.setDeadEnd(heading.left(0))
 
     def setDeadEnd(self, heading):
         deadEnds = self.deadEndsMap[heading.direction]
@@ -266,6 +260,21 @@ class DeadEnds(object):
                     if deadEnd.getValue(location) != '_':
                         grid.setValue(location, d.name)
         return '{}'.format(grid)
+
+"""
+Keep track of how often each cell is visited
+"""
+class Counter(Grid):
+    def __init__(self, rows, cols):
+        Grid.__init__(self, rows, cols, 0)
+
+    def increment(self, location):
+        row, col = location
+        self.grid[row][col] += 1
+
+    def coverage(self):
+        rows, cols = self.shape
+        return sum(1.0 for r in range(rows) for c in range(cols) if self.grid[r][c]>0)/self.area()
 
 """
 Heuristic
@@ -293,7 +302,7 @@ class Heuristic(Grid):
                 delta = d2.delta() 
                 l2 = (l[0]+delta[0], l[1]+delta[1])
                 # we can move or unknown teritory
-                if maze.canMove(l, d2) or (isUnknown and self.isValid(l2)):
+                if maze.canMove(Heading(d2, l)) or (isUnknown and self.isValid(l2)):
                     v2 = self.getValue(l2)
                     if v2==-1:
                         open.append((h+1,l2))

@@ -38,7 +38,7 @@ def findOptimalMoves(maze, goal, heuristic):
             break
 
         for d2 in Direction:
-            if maze.canMove(l, d2): 
+            if maze.canMove(Heading(d2, l)): 
                 delta = d2.delta()
                 l2 = ( l[0] + delta[0], l[1] + delta[1])
                 if maze.getValue(l2)>=0 and closed.getValue(l2)==0: 

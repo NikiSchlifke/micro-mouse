@@ -27,7 +27,7 @@ Controller Random
 class Controller_Random(Controller):
     def search(self, robot):
         if self.isDeadEnd(robot):
-            steering, movement = self.deadEnd()
+            steering, movement = self.deadEnd(robot)
         else:
             steering, movement = self.choose(robot)
         return (steering, movement)
@@ -36,7 +36,7 @@ class Controller_Random(Controller):
         sensor = robot.sensor
         return sensor.isDeadEnd()
 
-    def deadEnd(self):
+    def deadEnd(self, robot):
         # randomly turn at dead end
         steering = random.choice([Steering.L, Steering.R])
         movement = 0
@@ -58,10 +58,15 @@ class Controller_DeadEnd(Controller_Random):
         deadEnds = robot.deadEnds
         return deadEnds.isDeadEnd(heading)
 
-    def deadEnd(self):
-        # back off at dead end
-        steering = Steering.F
-        movement = -1
+    def deadEnd(self, robot):
+        sensor = robot.sensor
+        if sensor.left()==0 and sensor.right()==0:
+            # back off at dead end
+            steering = Steering.F
+            movement = -1
+        else:
+            steering = random.choice([s for s in [Steering.L, Steering.R] if sensor.distance(s)>0])
+            movement = 0
         return (steering, movement)
 
 """
