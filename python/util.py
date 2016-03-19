@@ -136,6 +136,9 @@ class Grid(object):
         row, col = location
         return 0 <= row and row < self.rows and 0 <= col and col < self.cols
 
+    def area(self):
+        return self.rows * self.cols
+
     def __str__(self):
         return '\n'.join(','.join('{}'.format(val) for val in row) for row in self.grid)
 
@@ -199,6 +202,10 @@ class Counter(Grid):
         row, col = location
         self.grid[row][col] += 1
 
+    def coverage(self):
+        rows, cols = self.shape
+        return sum(1.0 for r in range(rows) for c in range(cols) if self.grid[r][c]>0)/self.area()
+
     def __str__(self):
         return '\n'.join(','.join('{:2d}'.format(val) for val in row) for row in self.grid)
 """
@@ -253,9 +260,6 @@ class Heuristic(Grid):
                 self.setValue(l, 0)
 
         # expand from the center
-        self.expand(maze, open)
-
-    def expand(self, maze, open):
         while len(open)>0:
             h,l = open.pop(0)
             self.setValue(l, h)

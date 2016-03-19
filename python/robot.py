@@ -123,10 +123,11 @@ class Robot(object):
     def report(self):
         print 'Maze'
         print self.maze
-        print 'Counter'
-        print self.counter
         print 'Dead ends'
         print self.deadEnds
+        print 'Counter'
+        print self.counter
+        print 'Coverage', self.counter.coverage()
         print 'Heuristic'
         print self.heuristic
 
