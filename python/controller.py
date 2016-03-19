@@ -69,20 +69,33 @@ class Controller_DeadEnd(Controller_Random):
             movement = 0
         return (steering, movement)
 
+    def choose(self, robot):
+        # randomly choose available steering direction
+        heading = robot.heading
+        sensor = robot.sensor
+        deadEnds = robot.deadEnds
+        steering = random.choice(self.steerings(robot))
+        movement = 1
+        return (steering, movement)
+
+    def steerings(self, robot):
+        heading = robot.heading
+        sensor = robot.sensor
+        deadEnds = robot.deadEnds
+        return [s for s in Steering if sensor.distance(s)>0 and not deadEnds.isDeadEnd(heading.adjust(s, 1))]
+
 """
 Controller that keep tracks how often each cell is visited
 """
 class Controller_Counter(Controller_DeadEnd):
     def choose(self, robot):
         heading = robot.heading
-        sensor = robot.sensor
         counter = robot.counter
         options = []
-        for s in Steering:
-            if sensor.distance(s)>0:
-                location = heading.adjust(s,1).location
-                c = counter.getValue(location)
-                options.append((c, s.value))
+        for s in self.steerings(robot):
+            location = heading.adjust(s,1).location
+            c = counter.getValue(location)
+            options.append((c, s.value))
         options.sort()
         steering = Steering(options[0][1])
         movement = 1
@@ -94,16 +107,14 @@ Controller that uses Heuristic value to choose a path
 class Controller_Heuristic(Controller_Counter):
     def choose(self, robot):
         heading = robot.heading
-        sensor = robot.sensor
         counter = robot.counter
         heuristic = robot.heuristic
         options = []
-        for s in Steering:
-            if sensor.distance(s)>0:
-                location = heading.adjust(s,1).location
-                c = counter.getValue(location)
-                h = heuristic.getValue(location)
-                options.append((c, h, s.value))
+        for s in self.steerings(robot):
+            location = heading.adjust(s,1).location
+            c = counter.getValue(location)
+            h = heuristic.getValue(location)
+            options.append((c, h, s.value))
         options.sort()
         steering = Steering(options[0][2])
         movement = 1
