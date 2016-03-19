@@ -62,9 +62,13 @@ class Controller_DeadEnd(Controller_Random):
         return deadEnds.isDeadEnd(heading)
 
     def deadEnd(self, robot):
-        # back off at dead end
-        steering = Steering.F
-        movement = -1
+        sensor = robot.sensor
+        if sensor.isDeadEnd():
+            # back off at dead end by sensor
+            steering = Steering.F
+            movement = -1
+        else:
+            steering, movement = Controller_Random.deadEnd(self, robot)
         return (steering, movement)
 
     def steerings(self, robot):
