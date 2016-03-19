@@ -50,11 +50,13 @@ def findOptimalMoves(maze, goal, heuristic):
                     open.append((f2,h2,g2,l2,d2))
         open.sort()
 
+    path_count = 0
     path = Grid(rows, cols, ' ')
+
+    move_count = 0
     moves = []
 
     if goal_reached:
-        path_count = 0
         path.setValue(l, '*')
         while l != start:
             d = action.getValue(l)
@@ -65,7 +67,6 @@ def findOptimalMoves(maze, goal, heuristic):
             path.setValue(l, d)
             path_count += 1
         # convert direction to steering
-        move_count = 0
         heading = Heading(Direction.N, start)
         while not goal.isGoal(heading.location):
             direction = path.getValue(heading.location)
@@ -91,11 +92,11 @@ def findOptimalMoves(maze, goal, heuristic):
     print action
     print '-- Path --'
     print path
-    print 'Path Length: {}'.format(path_count)
+    print 'Path Length! {}'.format(path_count)
     print '-- Moves --'
     for steering, movement in moves:
         print '({},{})'.format(steering, movement)
-    print '# of Moves: {}'.format(move_count)
+    print '# of Moves! {}'.format(move_count)
 
     return moves
 

@@ -78,7 +78,7 @@ class Robot(object):
         heading = self.heading
         self.sensor = Sensor(sensors)
         self.maze.expand(heading, self.sensor)
-        self.deadEnds.update(heading, self.sensor)
+        self.deadEnds.update(heading, self.sensor, self.maze)
         self.counter.increment(heading.location)
 
         if self.controller.canReset(self):
@@ -127,7 +127,7 @@ class Robot(object):
         print self.deadEnds
         print 'Counter'
         print self.counter
-        print 'Coverage', self.counter.coverage()
+        print 'Coverage!', self.counter.coverage()
         print 'Heuristic'
         print self.heuristic
 

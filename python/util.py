@@ -92,8 +92,17 @@ class Sensor:
         return max(self.sensors)==0
 
     # both sides are walls
-    def isOneWay(self):
-        return self.sensors[0]==0 and self.sensors[1]>0 and self.sensors[2]==0
+    def isForwardOnly(self):
+        return self.forward()>0 and self.left()==0 and self.right()==0
+
+    def left(self):
+        return self.sensors[0]
+
+    def forward(self):
+        return self.sensors[1]
+
+    def right(self):
+        return self.sensors[2]
 
     def __str__(self):
         return str(self.sensors)
@@ -122,6 +131,7 @@ class Grid(object):
         self.cols = cols
         self.grid = [ [ copy.deepcopy(init_val) for c in range(cols) ] for r in range(rows) ]
         self.shape = (rows, cols)
+        self.data_type = type(init_val)
 
     def __getitem__(self, row):
         return self.grid[row]
@@ -140,6 +150,8 @@ class Grid(object):
         return self.rows * self.cols
 
     def __str__(self):
+        if self.data_type == int or self.data_type == float:
+            return '\n'.join(','.join('{:2d}'.format(val) for val in row) for row in self.grid)
         return '\n'.join(','.join('{}'.format(val) for val in row) for row in self.grid)
 
 """
@@ -186,11 +198,13 @@ class Mapper(Grid):
         i = direction.value
         return value & 2**i > 0
 
+    def isOneWay(self, location):
+        directions = sum(1 for d in Direction if self.canMove(location, d))
+        return directions <= 2
+
     def isUnknown(self, location):
         return self.getValue(location)==-1
 
-    def __str__(self):
-        return '\n'.join(','.join('{:2d}'.format(val) for val in row) for row in self.grid)
 """
 Keep track of how often each cell is visited
 """
@@ -206,8 +220,6 @@ class Counter(Grid):
         rows, cols = self.shape
         return sum(1.0 for r in range(rows) for c in range(cols) if self.grid[r][c]>0)/self.area()
 
-    def __str__(self):
-        return '\n'.join(','.join('{:2d}'.format(val) for val in row) for row in self.grid)
 """
 Keeps track of dead ends
 """
@@ -215,19 +227,23 @@ class DeadEnds(object):
     def __init__(self, rows, cols):
         # keep track of dead ends for each direction
         self.deadEndsMap = { d:Grid(rows, cols, '_') for d in Direction }
+        self.rows = rows
+        self.cols = cols
 
-    def reset(self, heading):
-        # initial location is dead end
-        self.setDeadEnd(heading.reverse())
-
-    def update(self, heading, sensor):
+    def update(self, heading, sensor, maze):
         if sensor.isDeadEnd():
             self.setDeadEnd(heading)
-        elif sensor.distance(Steering.L)==0 and sensor.distance(Steering.R)==0:
+        elif sensor.isForwardOnly(): 
             if self.isDeadEnd(heading.forward()):
                 self.setDeadEnd(heading)
             if self.isDeadEnd(heading.backward()):
                 self.setDeadEnd(heading.reverse())
+        elif sensor.forward()>0 and maze.isOneWay(heading.location):
+            if self.isDeadEnd(heading.forward()):
+                if sensor.right()==0:
+                    self.setDeadEnd(heading.right(0))
+                if sensor.left()==0:
+                    self.setDeadEnd(heading.left(0))
 
     def setDeadEnd(self, heading):
         deadEnds = self.deadEndsMap[heading.direction]
@@ -241,7 +257,15 @@ class DeadEnds(object):
         return False
 
     def __str__(self):
-        return '\n'.join('{}\n{}'.format(d, self.deadEndsMap[d]) for d in Direction)
+        grid = Grid(self.rows, self.cols, '_')
+        for d in Direction:
+            deadEnd = self.deadEndsMap[d]
+            for row in range(self.rows):
+                for col in range(self.cols):
+                    location = (row, col)
+                    if deadEnd.getValue(location) != '_':
+                        grid.setValue(location, d.name)
+        return '{}'.format(grid)
 
 """
 Heuristic
@@ -273,6 +297,3 @@ class Heuristic(Grid):
                     v2 = self.getValue(l2)
                     if v2==-1:
                         open.append((h+1,l2))
-
-    def __str__(self):
-        return '\n'.join(','.join('{:2d}'.format(val) for val in row) for row in self.grid)
