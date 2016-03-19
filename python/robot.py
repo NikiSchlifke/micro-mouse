@@ -84,7 +84,7 @@ class Robot(object):
         if self.controller.canReset(self):
             self.report()
             self.reset()
-            self.controller = Controller_Path()
+            self.controller = Controller_Optimal()
             return ('Reset', 'Reset')
 
         steering, movement = self.controller.search(self)
