@@ -44,10 +44,13 @@ class Controller_Random(Controller):
 
     def choose(self, robot):
         # randomly choose available steering direction
-        sensor = robot.sensor
-        steering = random.choice([s for s in Steering if sensor.distance(s)>0])
+        steering = random.choice(self.steerings(robot))
         movement = 1
         return (steering, movement)
+
+    def steerings(self, robot):
+        sensor = robot.sensor
+        return [s for s in Steering if sensor.distance(s)>0]
 
 """
 Controller that detects dead ends
@@ -59,29 +62,16 @@ class Controller_DeadEnd(Controller_Random):
         return deadEnds.isDeadEnd(heading)
 
     def deadEnd(self, robot):
-        sensor = robot.sensor
-        if sensor.left()==0 and sensor.right()==0:
-            # back off at dead end
-            steering = Steering.F
-            movement = -1
-        else:
-            steering = random.choice([s for s in [Steering.L, Steering.R] if sensor.distance(s)>0])
-            movement = 0
-        return (steering, movement)
-
-    def choose(self, robot):
-        # randomly choose available steering direction
-        heading = robot.heading
-        sensor = robot.sensor
-        deadEnds = robot.deadEnds
-        steering = random.choice(self.steerings(robot))
-        movement = 1
+        # back off at dead end
+        steering = Steering.F
+        movement = -1
         return (steering, movement)
 
     def steerings(self, robot):
         heading = robot.heading
         sensor = robot.sensor
         deadEnds = robot.deadEnds
+        # avoid dead ends
         return [s for s in Steering if sensor.distance(s)>0 and not deadEnds.isDeadEnd(heading.adjust(s, 1))]
 
 """

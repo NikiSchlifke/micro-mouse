@@ -1,4 +1,5 @@
 import copy
+import numpy as np
 from enum import Enum
 
 Delta = [[-1,  0], # go north
@@ -274,7 +275,8 @@ class Counter(Grid):
 
     def coverage(self):
         rows, cols = self.shape
-        return sum(1.0 for r in range(rows) for c in range(cols) if self.grid[r][c]>0)/self.area()
+        values = np.array([self.grid[r][c] for r in range(rows) for c in range(cols) if self.grid[r][c]>0])
+        return 100.0*len(values)/self.area(), np.average(values), np.std(values)
 
 """
 Heuristic

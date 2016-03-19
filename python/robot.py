@@ -127,7 +127,8 @@ class Robot(object):
         print self.deadEnds
         print 'Counter'
         print self.counter
-        print 'Coverage!', self.counter.coverage()
+        coverage, average, std = self.counter.coverage()
+        print 'Coverage! {:.2f}% count avg={:.2f} std={:.2f}'.format(coverage, average, std)
         print 'Heuristic'
         print self.heuristic
 
