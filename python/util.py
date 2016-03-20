@@ -7,24 +7,32 @@ Delta = [[-1,  0], # go north
          [ 1,  0], # go south
          [ 0, -1]] # go west
 
+"""
+The robot steering (Delta index moves)
+"""
 class Steering(Enum):    
     L, F, R = (-1,0,1) # Left, Forward, Right
 
     def __str__(self):
         return self.name
 
+"""
+The robot direction
+"""
 class Direction(Enum):
     N, E, S, W = range(4) # North, East, South, West
 
     def reverse(self):
         return Direction((self.value+2)%4)
 
+    # adjust the direction by steering value
     def adjust(self, steering):
         return Direction((self.value+steering.value)%4)
 
     def delta(self):
         return Delta[self.value]
 
+    # returns a steering value based on the difference between two directions
     def steer(self, direction):
         diff = direction.value - self.value
         if diff ==3:
@@ -48,6 +56,7 @@ class Heading(object):
         return '{} @ ({:>2d},{:>2d})'.format(
             self.direction.name, self.location[0], self.location[1])
 
+    # adjust the location and direction by the steering and movement
     def adjust(self, steering, movement):
         direction = self.direction.adjust(steering)
         delta = direction.delta()
@@ -81,6 +90,7 @@ class Sensor:
     def __init__(self, sensors):
         self.sensors = sensors
 
+    # return the distance from the robot to the walls given a steering value
     def distance(self, steering):
         steering_sensor_index_map = {
             Steering.L : 0,
@@ -89,25 +99,31 @@ class Sensor:
         }
         return self.sensors[steering_sensor_index_map[steering]]
 
+    # True if the all sensors returns 0
     def isDeadEnd(self):
         return max(self.sensors)==0
 
-    # both sides are walls
+    # forward path only (left and right are walls)
     def isForwardOnly(self):
         return self.forward()>0 and self.left()==0 and self.right()==0
 
+    # left path only (forward and right are walls)
     def isLeftOnly(self):
         return self.forward()==0 and self.left()>0 and self.right()==0
 
+    # right path only (left and forward are walls)
     def isRightOnly(self):
         return self.forward()==0 and self.left()==0 and self.right()>0
 
+    # distance to the left wall
     def left(self):
         return self.sensors[0]
 
+    # distance to the forward wall
     def forward(self):
         return self.sensors[1]
 
+    # distance to the right wall
     def right(self):
         return self.sensors[2]
 
@@ -156,6 +172,7 @@ class Grid(object):
     def area(self):
         return self.rows * self.cols
 
+    # print the whole grid values (differnt format is used based on the initial value data type)
     def __str__(self):
         if self.data_type == int or self.data_type == float:
             return '\n'.join(','.join('{:2d}'.format(val) for val in row) for row in self.grid)
@@ -168,6 +185,7 @@ class Mapper(Grid):
     def __init__(self, rows, cols):
         Grid.__init__(self, rows, cols, -1) 
 
+    # this method is used by the A* search test program to read the test maze file
     @staticmethod
     def openMazeFile(filename):
         with open(filename, 'rb') as f:
@@ -184,17 +202,29 @@ class Mapper(Grid):
                     maze.setValue((r,c), int(cells[i].strip()))
         return maze
 
+    # Expand the maze mapping as the robot explores
+    #
+    # It uses the same maze encoding as the test maze file format:
+    #
+    # - North = 1 = 2^0 = 2^Direction.N.value 
+    # - East  = 2 = 2^1 = 2^Direction.E.value
+    # - South = 3 = 2^2 = 2^Direction.S.value
+    # - West  = 4 = 2^3 = 2^Direction.W.value
+    #
     def expand(self, heading, sensor):
         value = 0
+        # Use the sensor values to map the left, forward, right walls/paths
         for s in Steering:
             if sensor.distance(s)>0:
                 i = heading.direction.adjust(s).value
                 value += 2**i
+        # We don't have a back sensor.  Use the value already mapped for the back.
         backward = heading.backward()
-        if self.canMove(backward.reverse()): # can come back from back ?
+        if self.canMove(backward.reverse()):
             value += 2**backward.direction.value
         self.setValue(heading.location, value)
 
+    # return True if we can move to a direction at a location specified in a Heading value
     def canMove(self, heading):
         location = heading.location
         direction = heading.direction
@@ -204,6 +234,7 @@ class Mapper(Grid):
         i = direction.value
         return (value & 2**i) > 0
 
+    # return True if there are only two ways to move indicating the location is part of one way path
     def isOneWay(self, location):
         directions = sum(1 for d in Direction if self.canMove(Heading(d, location)))
         return directions <= 2
@@ -212,7 +243,7 @@ class Mapper(Grid):
         return self.getValue(location)==-1
 
 """
-Keeps track of dead ends
+Keeps track of dead ends using one Grid object per direction
 """
 class DeadEnds(object):
     def __init__(self, rows, cols):
@@ -221,6 +252,8 @@ class DeadEnds(object):
         self.rows = rows
         self.cols = cols
 
+    # update dead end paths as the robot explores using the sensor values
+    # and the mapper values to see where the dead end paths are
     def update(self, heading, sensor, maze):
         if sensor.isDeadEnd():
 	    self.setDeadEnd(heading)
@@ -273,6 +306,10 @@ class Counter(Grid):
         row, col = location
         self.grid[row][col] += 1
 
+    # This return a tuple with three values
+    # - coverage = (the number of cells visited)/(the total number of cells)
+    # - average = average count value (excluding zero values)
+    # - standard deviation of count values (excluding zero values)
     def coverage(self):
         rows, cols = self.shape
         values = np.array([self.grid[r][c] for r in range(rows) for c in range(cols) if self.grid[r][c]>0])

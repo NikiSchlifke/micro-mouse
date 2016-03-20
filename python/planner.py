@@ -2,7 +2,8 @@ from util import *
 import sys
 
 """
-A* search
+A* search implementation returns the optimal moves
+in a list of (steering, movement) pairs
 """
 def findOptimalMoves(maze, goal, heuristic):
     rows, cols = maze.shape
@@ -15,12 +16,6 @@ def findOptimalMoves(maze, goal, heuristic):
     g = 0
     h = heuristic.getValue(start)
     f = g+h
-
-    cost = {
-        Steering.L : 2,
-        Steering.F : 1,
-        Steering.R : 2
-    }
 
     goal_reached = False
     open = [(f,h,g,start,Direction.N)]
@@ -42,7 +37,7 @@ def findOptimalMoves(maze, goal, heuristic):
                 delta = d2.delta()
                 l2 = ( l[0] + delta[0], l[1] + delta[1])
                 if maze.getValue(l2)>=0 and closed.getValue(l2)==0: 
-                    g2 = g + (1 if d==d2 else 2)
+                    g2 = g + (1 if d==d2 else 2) # cost is higher when the direction is changed
                     h2 = heuristic.getValue(l2)
                     f2 = g2+h2
                     closed.setValue(l2, 1)
@@ -50,6 +45,7 @@ def findOptimalMoves(maze, goal, heuristic):
                     open.append((f2,h2,g2,l2,d2))
         open.sort()
 
+    # find the optimal path and the optimal moves allowing maximum 3 movement in one time step
     path_count = 0
     path = Grid(rows, cols, ' ')
 

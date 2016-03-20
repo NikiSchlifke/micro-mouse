@@ -15,6 +15,8 @@ class Robot(object):
         self.start = (rows-1, 0)
         self.reset()
 
+        # these objects can be access by the controller via robot object
+        # which is passed via the search method of the controller
         self.goal = Goal(rows, cols)
         self.maze = Mapper(rows, cols)
         self.counter = Counter(rows, cols)
@@ -22,6 +24,7 @@ class Robot(object):
         self.deadEnds.setDeadEnd(self.heading.reverse())
         self.heuristic = Heuristic(self.maze)
 
+        # controller creation based on the env var which has the name of the controller
         try:
             controller_name = os.environ['CONTROL']
         except:
@@ -39,6 +42,7 @@ class Robot(object):
         else:
             self.controller = Controller() # this does nothing
 
+        # tick delay can be specified in an env var 'DELAY'
         self.time = 0
         try:
             self.tick_delay = float(os.environ['DELAY'])
@@ -77,18 +81,22 @@ class Robot(object):
         the tester to end the run and return the robot to the start.
         '''
 
+        # update utilities with the current location and sensor
         heading = self.heading
         self.sensor = Sensor(sensors)
         self.maze.expand(heading, self.sensor)
         self.deadEnds.update(heading, self.sensor, self.maze)
         self.counter.increment(heading.location)
 
+        # check if the controller wants to reset or not
         if self.controller.canReset(self):
             self.report()
             self.reset()
+            # switch to the 2nd run controller
             self.controller = Controller_Exploitation(self)
             return ('Reset', 'Reset')
 
+        # ask the controller for the next move (passing self as a context)
         steering, movement = self.controller.search(self)
 
         # check the steering and movement against sensor values
@@ -104,6 +112,7 @@ class Robot(object):
             }
             rotation = steering_rotation_map[steering]
         else:
+            # wrong move - do not apply
             rotation = 0
             movement = 0
 
