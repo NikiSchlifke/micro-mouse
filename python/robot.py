@@ -30,6 +30,8 @@ class Robot(object):
             self.controller = Controller_Random()
         elif controller_name=='deadend':
             self.controller = Controller_DeadEnd()
+        elif controller_name=='deadend2':
+            self.controller = Controller_DeadEnd2()
         elif controller_name=='counter':
             self.controller = Controller_Counter()
         elif controller_name=='heuristic':
@@ -84,7 +86,7 @@ class Robot(object):
         if self.controller.canReset(self):
             self.report()
             self.reset()
-            self.controller = Controller_Optimal()
+            self.controller = Controller_Exploitation(self)
             return ('Reset', 'Reset')
 
         steering, movement = self.controller.search(self)
