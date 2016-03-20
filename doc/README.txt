@@ -11,9 +11,13 @@
 
 - maze.py        This script contains functions for constructing the maze and for checking for walls upon robot movement or sensing.
 
+- planner.py     This script has the A* search implementation and the main function for stand-alone testing with test maze files.
+
 - showmaze.py    This script can be used to create a visual demonstration of what a maze looks like.
 
 - tester.py      This script will be run to test the robot's ability to navigate mazes.
+
+- util.py        This script has a number of utility classes.
 
 ## Maze test data file
 
@@ -22,6 +26,7 @@
   - test_maze_01.txt
   - test_maze_02.txt
   - test_maze_03.txt
+  - test_maze_04.txt
 
 ## Report file
 
